@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k \"node --watch server/index.js\" \"vite\"",
     "server": "node server/index.js",
     "start": "node server/index.js",
-    "build": "vite build"
+    "build": "vite build",
+    "test": "node --test test/*.test.js",
+    "format": "prettier --write ."
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "mongodb": "^6.12.0",
@@ -21,6 +22,11 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.7",
+    "prettier": "^3.10.1",
     "vite": "^6.0.5"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

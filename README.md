@@ -1,38 +1,53 @@
 # Switchboard
 
-A local-first job-switch operating system for backend engineers: AI-coach workouts, DSA practice, skill readiness, revision queue, job pipeline, and resume/LinkedIn improvement actions.
-
-It includes an SDE 1/2/3 interview map that covers the broader backend interview surface—not one language stack: DSA, coding/test quality, APIs and data, concurrency, system design, distributed systems, OS/networking/security, reliability/observability, and behavioral/leadership.
+A local-first job-switch tracker for software engineers: practice questions, answer scoring, a DSA list, spaced revision, a job pipeline, resume checks and mock-interview guides, with levels SDE 1 to SDE 3.
 
 ## Run locally
 
+Needs Node.js 20 or newer.
+
 ```bash
 npm install
-npm run server
-```
-
-In another terminal:
-
-```bash
 npm run dev
 ```
 
-Open the Vite URL (normally `http://localhost:5173`). Local data is saved to `data/switchboard.json` by the API.
+Open `http://localhost:5173`, then fill in **Profile**. Data is saved to `data/switchboard.json`.
 
-## MongoDB backup
+For a single-process production build on your own computer: `npm run build && npm start`, then open `http://localhost:8787`.
 
-Copy `.env.example` to `.env`, then set `MONGODB_URI` to a MongoDB Atlas connection string. The API writes every complete state update locally first, then upserts a backup copy to MongoDB. In a hosted deployment, MongoDB becomes the durable backup because the web host's local filesystem is ephemeral.
+## The practice loop
 
-## Free deployment
+1. Start a workout or pick a DSA problem.
+2. Write your answer on the session page.
+3. Get AI feedback and a score, or score yourself.
+4. Gaps join the revision queue, due after 1, 3, 7, 14 and 30 days.
 
-The included `render.yaml` is ready for Render. Push this folder to GitHub, create an Atlas Free cluster, then in Render choose **New → Blueprint** and select the repository. Add `MONGODB_URI` as a secret environment variable. The free service may take about a minute to wake after 15 minutes idle.
+## Optional setup
 
-For a personal project, Vercel Hobby plus Atlas is another free option, but the current Express server would need a serverless-function adapter. Render is the direct, zero-code-change route.
+Copy `.env.example` to `.env`, fill in what you need and restart.
 
-## Interview sharing and video
+| Setting          | Effect                                                                         |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `OPENAI_API_KEY` | Live questions, answer scoring, interviewer guides, resume and LaTeX rewriting |
+| `MONGODB_URI`    | Backup copy in MongoDB. The newer of the local and backup copies wins          |
+| `JITSI_DOMAIN`   | Video room links for mock interviews                                           |
+| `APP_PASSWORD`   | Required for hosting, at least 12 characters                                   |
 
-The UI contains a consent-first interview studio and private sharing controls. Before exposing it beyond yourself, add authentication (for example, Auth.js/Clerk), server-enforced resource permissions, and an audited invitation flow. A real multi-person video room also needs a configured video provider (Daily, Twilio Video, or a self-hosted Jitsi deployment); provider credentials and the user's consent should be required before creating or recording a room. Those are intentionally not hardwired into a personal tracker without your chosen provider/account.
+Without an API key you get a built-in question bank, self-scoring and a rule-based resume checklist. Built-in mode never writes resume content.
 
-## Enable live AI coaching
+## What leaves your computer
 
-Set `OPENAI_API_KEY` in `.env` and restart the API. The key stays on the server, and `/api/coach` generates the one-at-a-time exercise or interviewer-only question pack. Configure `JITSI_DOMAIN` with a private Jitsi deployment to receive a live-room URL only after explicit consent.
+With AI enabled, your role, level, experience, stack, the exercise and your answer are sent to OpenAI. A resume review or LaTeX rewrite also sends that document and the job description. With MongoDB enabled, all saved data is copied there.
+
+## Hosting
+
+`render.yaml` deploys to Render: choose **New → Blueprint**, then set `APP_PASSWORD` (the server will not start without it) and `MONGODB_URI`. The host's disk is temporary, so without MongoDB your data is lost on restart.
+
+This is a single-user app with one shared password. Mentor links are read-only and can be revoked.
+
+## Develop
+
+```bash
+npm test
+npm run format
+```

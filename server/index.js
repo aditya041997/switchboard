@@ -99,11 +99,11 @@ app.post('/api/resume/review', async (req, res) => {
 app.post('/api/resume/improve', async (req, res) => {
   const { type = 'resume', text = '', jobDescription = '' } = req.body || {};
   if (typeof text !== 'string' || text.trim().length < 40) return res.status(400).json({ error: 'Add resume or LinkedIn text first.' });
-  if (typeof jobDescription !== 'string' || jobDescription.trim().length < 40) return res.status(400).json({ error: 'Paste a job description to tailor this draft.' });
-  const clippedText = text.trim().slice(0, 24000); const clippedJd = jobDescription.trim().slice(0, 16000); let result;
+  if (typeof jobDescription !== 'string') return res.status(400).json({ error: 'Job description must be text when supplied.' });
+  const clippedText = text.trim().slice(0, 24000); const clippedJd = jobDescription.trim().slice(0, 16000); const mode = clippedJd.length >= 40 ? 'Tailor for this job description' : 'Perform a general senior-backend resume upgrade using the candidate context'; let result;
   try {
     if (process.env.OPENAI_API_KEY) {
-      const prompt = `Tailor this ${type} for the job description below. ${resumeContext}\n\nReturn sections exactly named: JD alignment, Missing evidence, Rewritten draft, and Application strategy. Preserve truth: never invent metrics or experience; use [add metric] or [verify] where needed.\n\nCURRENT ${type.toUpperCase()}:\n${clippedText}\n\nJOB DESCRIPTION:\n${clippedJd}`;
+      const prompt = `${mode}. ${resumeContext}\n\nReturn sections exactly named: Clarifications (only questions that materially improve accuracy; otherwise write “None”), Strengths, Missing evidence, Rewritten draft, and Next actions. Preserve truth: never invent metrics or experience; use [add metric] or [verify] where needed. Still provide the best usable rewritten draft even when clarifications are needed.\n\nCURRENT ${type.toUpperCase()}:\n${clippedText}${clippedJd.length >= 40 ? `\n\nJOB DESCRIPTION:\n${clippedJd}` : ''}`;
       const improved = await coach(prompt); result = { source: 'AI', text: improved, draft: improved, keywords: [], missing: [] };
     } else result = localResumeImprovement(type, clippedText, clippedJd);
   } catch (err) { console.warn('AI resume improvement skipped:', err.message); result = localResumeImprovement(type, clippedText, clippedJd); }
@@ -112,10 +112,11 @@ app.post('/api/resume/improve', async (req, res) => {
 app.post('/api/resume/overleaf', async (req, res) => {
   const { latex = '', jobDescription = '' } = req.body || {};
   if (typeof latex !== 'string' || latex.trim().length < 80 || !/\\documentclass|\\begin\{document\}/.test(latex)) return res.status(400).json({ error: 'Upload the main Overleaf .tex file (it must include the document preamble).' });
-  if (typeof jobDescription !== 'string' || jobDescription.trim().length < 40) return res.status(400).json({ error: 'Paste a job description before tailoring the Overleaf source.' });
+  if (typeof jobDescription !== 'string') return res.status(400).json({ error: 'Job description must be text when supplied.' });
   if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'Overleaf source rewriting requires OPENAI_API_KEY. You can still use the local PDF/text review without AI credits.' });
   try {
-    const prompt = `Rewrite this existing Overleaf resume source for the job description. ${resumeContext}\n\nReturn ONLY complete compilable LaTeX. Preserve the preamble, packages, custom macros, layout, contact details and section structure whenever possible. Change only resume prose; do not invent achievements, metrics or technologies. Use [add metric] or [verify] when needed.\n\nJOB DESCRIPTION:\n${jobDescription.trim().slice(0, 16000)}\n\nLATEX SOURCE:\n${latex.trim().slice(0, 50000)}`;
+    const target = jobDescription.trim().length >= 40 ? `Tailor for this job description:\n${jobDescription.trim().slice(0, 16000)}` : 'Perform a general senior-backend upgrade using the candidate context; no specific job description was provided.';
+    const prompt = `Rewrite this existing Overleaf resume source. ${resumeContext}\n\n${target}\n\nReturn ONLY complete compilable LaTeX. Preserve the preamble, packages, custom macros, layout, contact details and section structure whenever possible. Change only resume prose; do not invent achievements, metrics or technologies. Use [add metric] or [verify] when needed.\n\nLATEX SOURCE:\n${latex.trim().slice(0, 50000)}`;
     const output = (await coach(prompt)).replace(/^```(?:latex|tex)?\s*/i, '').replace(/\s*```$/, '');
     if (!/\\begin\{document\}/.test(output)) throw new Error('The AI response was not complete LaTeX. Please try again.');
     res.json({ latex: output, fileName: 'switchboard-tailored-resume.tex' });

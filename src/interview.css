@@ -1,4 +1,5 @@
 .interview-form { display: grid; gap: 14px; }
+.interview-form textarea { width: 100%; min-height: 180px; resize: vertical; border: 1px solid #dfe2e8; border-radius: 7px; padding: 10px; color: #28324a; font: inherit; line-height: 1.45; }
 .interview-hint { margin: -2px 0 2px; color: #69748d; line-height: 1.5; font-size: .9rem; }
 .interview-form label small { color: #7d879c; font-weight: 500; }
 .consent-line { display: flex; gap: 10px; align-items: flex-start; margin-top: 2px; color: #39445c; line-height: 1.4; font-size: .9rem; }
@@ -7,4 +8,19 @@
 .schedule-empty b { color: #1f2c49; }
 .room-link { color: #405bc5; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .room-link:hover { text-decoration: underline; }
+.career-result { max-height: 360px; overflow: auto; padding: 15px; border: 1px solid #e2e6f4; border-radius: 9px; background: #f7f8ff; }
+.career-result pre { margin: 0; white-space: pre-wrap; font: inherit; font-size: .86rem; line-height: 1.55; color: #3f4b65; }
+.linkedin-import { display: grid; gap: 8px; padding: 12px; border: 1px solid #e2e6f4; border-radius: 9px; background: #fafbff; }
+.linkedin-import small { color: #69748d; line-height: 1.4; }
+.share-link { display: grid; gap: 8px; padding: 13px; border: 1px solid #dfe4f5; border-radius: 9px; background: #f8f9ff; }
+.share-link code { overflow-wrap: anywhere; font-size: .78rem; color: #4055a7; }
+.share-link .revoke { text-align: left; color: #b14f45; }
+.shared-page { min-height: 100vh; max-width: 820px; margin: 0 auto; padding: 70px 28px; background: #f8f8f6; color: #172036; }
+.shared-page h1 { margin: 0 0 12px; }
+.shared-page > p { color: #68748d; line-height: 1.55; }
+.shared-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0; }
+.shared-metrics div { padding: 19px; border: 1px solid #e6e8ef; border-radius: 12px; background: #fff; }
+.shared-metrics b { display: block; font-size: 1.7rem; }
+.shared-metrics span { font-size: .8rem; color: #69748d; }
+@media (max-width: 620px) { .shared-metrics { grid-template-columns: 1fr; } }
 @media (max-width: 620px) { .interview-form .form-row { grid-template-columns: 1fr; } }

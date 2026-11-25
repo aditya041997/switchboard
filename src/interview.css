@@ -15,6 +15,8 @@
 .tailor-panel { display: grid; gap: 12px; margin-top: 12px; padding-top: 18px; border-top: 1px solid #e4e7ef; }
 .overleaf-panel { display: grid; gap: 8px; padding: 12px; border-radius: 9px; background: #fff6eb; color: #5e4b35; font-size: .86rem; }
 .overleaf-panel span { line-height: 1.4; }
+.danger-zone { border-color: #f1d7d2; }
+.danger-zone .text-btn { color: #b14f45; }
 .share-link { display: grid; gap: 8px; padding: 13px; border: 1px solid #dfe4f5; border-radius: 9px; background: #f8f9ff; }
 .share-link code { overflow-wrap: anywhere; font-size: .78rem; color: #4055a7; }
 .share-link .revoke { text-align: left; color: #b14f45; }

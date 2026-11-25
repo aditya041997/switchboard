@@ -36,10 +36,10 @@ async function mongoData() {
   try { mongo ??= new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000 }); await mongo.connect(); return (await mongo.db(process.env.MONGODB_DATABASE || 'switchboard').collection('backups').findOne({ _id: 'primary' }))?.data || null; }
   catch (err) { console.warn('Mongo restore skipped:', err.message); return null; }
 }
-async function backup(data) { if (!process.env.MONGODB_URI) return; try { mongo ??= new MongoClient(process.env.MONGODB_URI); await mongo.connect(); await mongo.db(process.env.MONGODB_DATABASE || 'switchboard').collection('backups').updateOne({ _id: 'primary' }, { $set: { data, updatedAt: new Date() } }, { upsert: true }); } catch (err) { console.warn('Mongo backup skipped:', err.message); } }
+async function backup(data) { if (!process.env.MONGODB_URI) return false; try { mongo ??= new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000 }); await mongo.connect(); await mongo.db(process.env.MONGODB_DATABASE || 'switchboard').collection('backups').updateOne({ _id: 'primary' }, { $set: { data, updatedAt: new Date() } }, { upsert: true }); return true; } catch (err) { console.warn('Mongo backup skipped:', err.message); return false; } }
 function discardDraftInterviews(data) { const interviews = (data.interviews || []).filter(item => item?.roomUrl); return interviews.length === (data.interviews || []).length ? data : { ...data, interviews }; }
 app.get('/api/state', async (_, res) => { const local = read(); const cloud = await mongoData(); const source = cloud || local; const clean = discardDraftInterviews(source); if (clean !== source) { localWrite(clean); if (cloud) await backup(clean); } else if (cloud) localWrite(cloud); res.json(clean); });
-app.put('/api/state', async (req, res) => { const data = req.body; localWrite(data); await backup(data); res.json({ ok: true, mongoBackup: Boolean(process.env.MONGODB_URI) }); });
+app.put('/api/state', async (req, res) => { const data = req.body; localWrite(data); res.json({ ok: true, mongoBackup: await backup(data) }); });
 app.get('/api/sessions/:id', async (req, res) => {
   const cloud = await mongoData(); const state = cloud || read();
   const session = state.sessions.find(item => item.id === req.params.id);

@@ -31,11 +31,11 @@ function localWrite(data) { mkdirSync(dataDir, { recursive: true }); writeFileSy
 let mongo;
 async function mongoData() {
   if (!process.env.MONGODB_URI) return null;
-  try { mongo ??= new MongoClient(process.env.MONGODB_URI); await mongo.connect(); return (await mongo.db(process.env.MONGODB_DATABASE || 'switchboard').collection('backups').findOne({ _id: 'primary' }))?.data || null; }
+  try { mongo ??= new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000 }); await mongo.connect(); return (await mongo.db(process.env.MONGODB_DATABASE || 'switchboard').collection('backups').findOne({ _id: 'primary' }))?.data || null; }
   catch (err) { console.warn('Mongo restore skipped:', err.message); return null; }
 }
 async function backup(data) { if (!process.env.MONGODB_URI) return; try { mongo ??= new MongoClient(process.env.MONGODB_URI); await mongo.connect(); await mongo.db(process.env.MONGODB_DATABASE || 'switchboard').collection('backups').updateOne({ _id: 'primary' }, { $set: { data, updatedAt: new Date() } }, { upsert: true }); } catch (err) { console.warn('Mongo backup skipped:', err.message); } }
-app.get('/api/state', async (_, res) => { const cloud = await mongoData(); if (cloud) localWrite(cloud); res.json(cloud || read()); });
+app.get('/api/state', async (_, res) => { const local = read(); const cloud = await mongoData(); if (cloud) localWrite(cloud); res.json(cloud || local); });
 app.put('/api/state', async (req, res) => { const data = req.body; localWrite(data); await backup(data); res.json({ ok: true, mongoBackup: Boolean(process.env.MONGODB_URI) }); });
 app.get('/api/sessions/:id', async (req, res) => {
   const cloud = await mongoData(); const state = cloud || read();

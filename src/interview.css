@@ -1,0 +1,10 @@
+.interview-form { display: grid; gap: 14px; }
+.interview-hint { margin: -2px 0 2px; color: #69748d; line-height: 1.5; font-size: .9rem; }
+.interview-form label small { color: #7d879c; font-weight: 500; }
+.consent-line { display: flex; gap: 10px; align-items: flex-start; margin-top: 2px; color: #39445c; line-height: 1.4; font-size: .9rem; }
+.consent-line input { width: auto; margin-top: 3px; accent-color: #22345f; }
+.schedule-empty { padding: 28px 0 8px; display: grid; gap: 7px; color: #68748d; }
+.schedule-empty b { color: #1f2c49; }
+.room-link { color: #405bc5; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.room-link:hover { text-decoration: underline; }
+@media (max-width: 620px) { .interview-form .form-row { grid-template-columns: 1fr; } }

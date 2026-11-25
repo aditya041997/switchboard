@@ -1,0 +1,112 @@
+textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #dfe2e8;
+  border-radius: 7px;
+  padding: 10px;
+  color: #28324a;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.danger {
+  color: #b14f45;
+}
+.banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 17px;
+  background: #fff6eb;
+  border: 1px solid #f1dcc0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+}
+.panel {
+  margin-bottom: 17px;
+  max-width: 920px;
+}
+.panel form {
+  margin-top: 16px;
+}
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+  margin-top: 16px;
+}
+.inline-form label {
+  flex: 1;
+  min-width: 150px;
+}
+.lane article select {
+  width: 100%;
+  font-size: 11px;
+  padding: 5px;
+  margin-bottom: 8px;
+}
+.lane article .row-actions {
+  margin-top: 10px;
+}
+.kanban {
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  overflow-x: auto;
+}
+.skill-card input[type='range'] {
+  width: 100%;
+  padding: 0;
+}
+.question {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 14px;
+  color: #3f4b65;
+  margin: 12px 0;
+}
+.auth {
+  max-width: 380px;
+  margin: 15vh auto;
+  padding: 0 20px;
+}
+.checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.revision time {
+  width: auto;
+}
+@media (max-width: 900px) {
+  .kanban {
+    grid-template-columns: repeat(6, minmax(150px, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .banner {
+    display: grid;
+  }
+  .revision {
+    flex-wrap: wrap;
+  }
+  nav button {
+    padding: 8px 3px;
+  }
+}
+.hero .text-btn {
+  color: #b8c7ff;
+}

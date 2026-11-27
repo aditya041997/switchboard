@@ -28,6 +28,12 @@ export default function Profile({ data, update, go }) {
           required: true,
           placeholder: 'e.g. Python, FastAPI, PostgreSQL',
         })}
+        <Select
+          label="Lesson language"
+          name="explainIn"
+          options={['English', 'Hinglish']}
+          defaultValue={p.explainIn}
+        />
         {field('goal', 'Goal (private, never sent to AI)', {
           placeholder: 'e.g. target pay or companies',
         })}

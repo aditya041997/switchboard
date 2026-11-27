@@ -1,4 +1,6 @@
 // Data model shared by the browser and the API.
+import { CATALOG_VERSION, mergeCatalog } from './catalog.js';
+
 export const LEVELS = ['SDE 1', 'SDE 2', 'SDE 3'];
 export const STAGES = ['Saved', 'Applied', 'Referral requested', 'Interview', 'Offer', 'Closed'];
 export const DSA_STATUSES = [
@@ -51,44 +53,13 @@ const SKILLS = [
   ['k5', 'CS foundations', 'OS, networking & security'],
   ['k6', 'Leadership', 'Behavioral stories & influence'],
 ];
-const PROBLEMS = [
-  ['Arrays & hashing', 'Two Sum', 'Easy'],
-  ['Arrays & hashing', 'Group Anagrams', 'Medium'],
-  ['Two pointers', '3Sum', 'Medium'],
-  ['Sliding window', 'Longest Substring Without Repeating Characters', 'Medium'],
-  ['Sliding window', 'Minimum Window Substring', 'Hard'],
-  ['Stack', 'Valid Parentheses', 'Easy'],
-  ['Monotonic stack', 'Daily Temperatures', 'Medium'],
-  ['Binary search', 'Search in Rotated Sorted Array', 'Medium'],
-  ['Linked list', 'Reverse Linked List', 'Easy'],
-  ['Design', 'LRU Cache', 'Medium'],
-  ['Trees', 'Lowest Common Ancestor of a Binary Tree', 'Medium'],
-  ['Trees', 'Serialize and Deserialize Binary Tree', 'Hard'],
-  ['Heap', 'Merge k Sorted Lists', 'Hard'],
-  ['Heap', 'Top K Frequent Elements', 'Medium'],
-  ['Graphs', 'Number of Islands', 'Medium'],
-  ['Topological sort', 'Course Schedule', 'Medium'],
-  ['Intervals', 'Merge Intervals', 'Medium'],
-  ['Backtracking', 'Combination Sum', 'Medium'],
-  ['Dynamic programming', 'Coin Change', 'Medium'],
-  ['Dynamic programming', 'Longest Increasing Subsequence', 'Medium'],
-];
-
 export const starterSkills = () =>
   SKILLS.map(([id, area, focus]) => ({ id, area, focus, confidence: 0 }));
-export const starterProblems = () =>
-  PROBLEMS.map(([pattern, problem, difficulty], i) => ({
-    id: `p${i + 1}`,
-    pattern,
-    problem,
-    difficulty,
-    status: 'To practise',
-    lastPractised: '',
-  }));
+export const starterProblems = () => mergeCatalog([]);
 
 export function starterState() {
   return {
-    meta: { version: SCHEMA_VERSION, rev: 0, updatedAt: 0 },
+    meta: { version: SCHEMA_VERSION, rev: 0, updatedAt: 0, catalog: CATALOG_VERSION },
     profile: {
       name: '',
       targetRole: 'Backend Engineer',
@@ -243,10 +214,13 @@ export function migrateState(input) {
     version: SCHEMA_VERSION,
     rev: Number(source.meta?.rev) || 0,
     updatedAt: Number(source.meta?.updatedAt) || 0,
+    catalog: CATALOG_VERSION,
   };
   if (!state.skills.length) state.skills = starterSkills();
+  // Runs once per catalog version, so problems the user removes later stay removed.
+  if (isObject(input) && source.meta?.catalog !== CATALOG_VERSION)
+    state.dsa = mergeCatalog(state.dsa);
   if (old) {
-    if (!state.dsa.length) state.dsa = starterProblems();
     state.interviews = state.interviews.filter((i) => i.roomUrl);
     state.sessions = state.sessions.map((s) => {
       const unscored =

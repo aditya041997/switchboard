@@ -15,6 +15,12 @@ Open `http://localhost:5173`, then fill in **Profile**. Data is saved to `data/s
 
 For a single-process production build on your own computer: `npm run build && npm start`, then open `http://localhost:8787`.
 
+## Guided DSA practice
+
+The DSA lab has 155 well-known problems grouped by pattern, each linked to LeetCode and to a search of the codestorywithMIK channel. You can add problems from another sheet and save a playlist per pattern.
+
+On a session: discuss your approach with the coach (or choose **Teach me story-first** for a five-step lesson), write code in the built-in editor, then submit it for review and ask for hints as needed. The AI reads your code but does not run it; confirm on LeetCode. This project is not affiliated with LeetCode or codestorywithMIK.
+
 ## The practice loop
 
 1. Start a workout or pick a DSA problem.

@@ -7,5 +7,6 @@ import './coach.css';
 import './session.css';
 import './interview.css';
 import './forms.css';
+import './workspace.css';
 
 createRoot(document.getElementById('root')).render(<App />);

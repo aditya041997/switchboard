@@ -205,3 +205,46 @@
 .bubble.lesson {
   background: #f3edff;
 }
+
+.statement {
+  max-height: 460px;
+  overflow-y: auto;
+  border: 1px solid #eceef2;
+  border-radius: 10px;
+  padding: 0 14px 10px;
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #3f4b65;
+}
+.statement pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f4f5f9;
+  border-radius: 7px;
+  padding: 9px 11px;
+  margin: 5px 0 10px;
+  font:
+    12px/1.6 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.statement h4 {
+  margin: 14px 0 6px;
+}
+.statement ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.case p {
+  margin: -4px 0 10px;
+}
+.chat > .link {
+  align-self: flex-start;
+}
+.chat form select {
+  width: auto;
+  font-size: 12px;
+  padding: 6px 8px;
+}

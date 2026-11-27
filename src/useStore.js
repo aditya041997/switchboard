@@ -6,7 +6,8 @@ export function useStore() {
   const [data, setData] = useState(null),
     [error, setError] = useState(null),
     [saving, setSaving] = useState(0),
-    [toast, setToast] = useState('');
+    [toast, setToast] = useState(''),
+    [storage, setStorage] = useState(null);
   const latest = useRef(null);
   const rev = useRef(0);
   const chain = useRef(Promise.resolve());
@@ -37,6 +38,24 @@ export function useStore() {
     load();
   }, [load]);
 
+  const checkStorage = useCallback(
+    () =>
+      api('/storage')
+        .then(setStorage)
+        .catch(() => {}),
+    [],
+  );
+  useEffect(() => {
+    if (data) checkStorage();
+  }, [Boolean(data), checkStorage]);
+  // Keep checking until MongoDB has caught up.
+  const behind = Boolean(storage?.configured && !storage.synced);
+  useEffect(() => {
+    if (!behind) return;
+    const poll = setInterval(checkStorage, 15000);
+    return () => clearInterval(poll);
+  }, [behind, checkStorage]);
+
   /** `change` receives the newest state and returns the next one. */
   const update = useCallback(
     (change) => {
@@ -54,6 +73,7 @@ export function useStore() {
             body: { ...next, meta: { ...next.meta, rev: rev.current } },
           });
           rev.current = result.meta.rev;
+          setStorage((s) => s && { ...s, synced: result.mongoBackup });
           notify(result.mongoBackup ? 'Saved and backed up to Mongo' : 'Saved on the server');
           return true;
         } catch (err) {
@@ -73,5 +93,5 @@ export function useStore() {
     [load, notify],
   );
 
-  return { data, error, saving: saving > 0, toast, update, reload: load };
+  return { data, error, saving: saving > 0, toast, storage, update, reload: load };
 }

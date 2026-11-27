@@ -36,7 +36,7 @@ export function mongoBackup(uri, database = 'switchboard') {
   };
 }
 
-export function createStore({ file, backup = null, now = Date.now }) {
+export function createStore({ file, backup = null, now = Date.now, retryMs = 5000 }) {
   let queue = Promise.resolve();
   // One operation at a time, so two requests cannot interleave a read and a write.
   const exclusive = (fn) => {
@@ -44,6 +44,27 @@ export function createStore({ file, backup = null, now = Date.now }) {
     queue = run.catch(() => {});
     return run;
   };
+
+  // Whether MongoDB holds the newest copy. While it does not, the store keeps retrying.
+  const status = { configured: Boolean(backup), synced: false, lastSync: null };
+  let timer = null;
+  let delay = retryMs;
+  function mark(synced) {
+    status.synced = synced;
+    if (synced) {
+      status.lastSync = now();
+      delay = retryMs;
+      clearTimeout(timer);
+      timer = null;
+    } else if (!timer) {
+      timer = setTimeout(() => {
+        timer = null;
+        exclusive(load).catch((err) => console.warn('Mongo retry failed:', err.message));
+      }, delay);
+      timer.unref();
+      delay = Math.min(delay * 2, 60000);
+    }
+  }
 
   function readLocal() {
     if (!existsSync(file)) return null;
@@ -64,9 +85,11 @@ export function createStore({ file, backup = null, now = Date.now }) {
     if (!backup) return false;
     try {
       await backup.write(data);
+      mark(true);
       return true;
     } catch (err) {
       console.warn('Mongo backup skipped:', err.message);
+      mark(false);
       return false;
     }
   }
@@ -81,20 +104,24 @@ export function createStore({ file, backup = null, now = Date.now }) {
       cloud = raw ? migrateState(raw) : null;
     } catch (err) {
       console.warn('Mongo restore skipped:', err.message);
+      mark(false);
       if (local) return local;
       // Starting empty here could later overwrite a good backup.
       throw new StoreError('The backup is unreachable and there is no local copy. Try again.', 503);
     }
     if (cloud && (!local || cloud.meta.updatedAt > local.meta.updatedAt)) {
       writeLocal(cloud);
+      mark(true);
       return cloud;
     }
     if (local && (!cloud || local.meta.updatedAt > cloud.meta.updatedAt)) await pushBackup(local);
+    else mark(true);
     return local ?? starterState();
   }
 
   return {
     load: () => exclusive(load),
+    status: () => ({ ...status }),
     save: (next) =>
       exclusive(async () => {
         const current = await load();

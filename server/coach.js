@@ -177,6 +177,60 @@ function parseApproach(reply) {
   return { reply: data.reply, ready: data.ready === true };
 }
 
+const record = (properties) => ({
+  type: 'object',
+  additionalProperties: false,
+  required: Object.keys(properties),
+  properties,
+});
+const str = { type: 'string' };
+export const STATEMENT_FORMAT = {
+  type: 'json_schema',
+  name: 'problem_statement',
+  strict: true,
+  schema: record({
+    known: { type: 'boolean' },
+    description: str,
+    signature: str,
+    examples: { type: 'array', items: record({ input: str, output: str, explanation: str }) },
+    constraints: strings,
+    testCases: { type: 'array', items: record({ name: str, input: str, output: str }) },
+  }),
+};
+
+export function statementPrompt({ title, pattern, difficulty, language }) {
+  return `Write the interview problem commonly known as "${title}" (${difficulty || 'unknown difficulty'}, ${pattern || 'unknown pattern'}).
+Use entirely your own wording; do not reproduce the text of any website. Keep the standard input, output and rules. Do not reveal or hint at the solution or technique.
+Give a clear description, a ${language || 'Java'} method signature, 2-3 examples with short explanations, the constraints, and 5-6 further test cases covering edge cases. Trace every expected output carefully against the rules; if several outputs are valid, say so in the description. If you do not know this problem, set known to false and leave the other fields empty.`;
+}
+
+export function parseStatement(reply) {
+  const data = readJson(reply);
+  if (data.known === false)
+    throw new AiError('The AI does not recognise this problem. Use the source link for it.', 422);
+  const clean = (v) => String(v ?? '').slice(0, 2000);
+  const cases = (list) =>
+    (Array.isArray(list) ? list : [])
+      .filter((c) => c?.input && c?.output)
+      .slice(0, 8)
+      .map((c) => ({
+        name: clean(c.name),
+        input: clean(c.input),
+        output: clean(c.output),
+        explanation: clean(c.explanation),
+      }));
+  const statement = {
+    description: String(data.description || '').slice(0, 4000),
+    signature: clean(data.signature),
+    examples: cases(data.examples),
+    constraints: (Array.isArray(data.constraints) ? data.constraints : []).slice(0, 12).map(clean),
+    testCases: cases(data.testCases),
+  };
+  if (!statement.description || !statement.examples.length || !statement.testCases.length)
+    throw new AiError('The AI reply was missing parts of the question. Please try again.');
+  return statement;
+}
+
 export const LESSON_STEPS = [
   'Tell the problem as a short everyday story or analogy, with one tiny example. Do not discuss solutions yet.',
   'Build the most obvious brute-force idea from that story and let me work out its cost.',
@@ -199,6 +253,7 @@ export function sessionTurn(turn) {
   const context = {
     role: 'user',
     content: `You are running a ${level} interview on ${focus}. Candidate context: ${candidateContext(profile)}
+I may type or dictate in English, Hindi or a mix of both, possibly with speech-to-text mistakes in technical words. Understand what I mean, do not lower scores for the language or those mistakes, and ask if something is unclear.
 The question is below. If you only recognise it by its title, restate it briefly in your own words when that helps, and say if you are unsure of a constraint.
 
 <question>
@@ -214,7 +269,7 @@ ${problem}
         context,
         ...messages,
         ask(
-          `Review my ${work}. You cannot run it, so trace it by hand on a normal case and edge cases. Set verdict to "correct" only if it solves the question${coding ? ' with acceptable complexity' : ''}. In feedback, state complexity, concrete failing inputs or missing points, and what to fix, without writing the corrected solution. Score each dimension 0-5 on what is demonstrated, list at most 4 short gaps, strengths as mastered, and one follow-up question.${attempt}`,
+          `Review my ${work}. You cannot run it, so trace it by hand on a normal case and edge cases. Trace the listed test cases too and name any that fail. Set verdict to "correct" only if it solves the question${coding ? ' with acceptable complexity' : ''}. In feedback, state complexity, concrete failing inputs or missing points, and what to fix, without writing the corrected solution. Score each dimension 0-5 on what is demonstrated, list at most 4 short gaps, strengths as mastered, and one follow-up question.${attempt}`,
         ),
       ],
       format: REVIEW_FORMAT,

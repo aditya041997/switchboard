@@ -187,3 +187,22 @@ test('a corrupt data file is left untouched', async () => {
   await assert.rejects(createStore({ file }).load(), /left untouched/);
   assert.equal(readFileSync(file, 'utf8'), '{broken');
 });
+
+test('a failed backup is retried without another save', async () => {
+  const backup = fakeBackup();
+  const store = createStore({ file: tempFile(), backup, retryMs: 20 });
+  await store.save(await store.load());
+  assert.equal(store.status().synced, true);
+  backup.writesFail = true;
+  const state = await store.load();
+  state.sessions = [
+    { id: 's1', date: '2026-11-27', topic: 'DSA & coding', exercise: 'Two Sum', answer: 'code' },
+  ];
+  const { backedUp } = await store.save(state);
+  assert.equal(backedUp, false);
+  assert.equal(store.status().synced, false);
+  backup.writesFail = false;
+  await new Promise((done) => setTimeout(done, 150));
+  assert.equal(store.status().synced, true);
+  assert.equal(backup.data.sessions[0].answer, 'code');
+});

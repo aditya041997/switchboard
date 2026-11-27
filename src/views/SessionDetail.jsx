@@ -4,7 +4,10 @@ import { problemUrl } from '../../shared/catalog.js';
 import { patternVideosUrl, problemVideoUrl, youtubeUrl } from '../../shared/videos.js';
 import { api } from '../api.js';
 import CodeEditor from '../CodeEditor.jsx';
+import useDictation from '../useDictation.js';
 import ScoreForm from './ScoreForm.jsx';
+import Statement from './Statement.jsx';
+import { statementText } from '../../shared/statement.js';
 
 const LANGUAGES = ['Java', 'Python', 'C++', 'JavaScript', 'Go'];
 const guessLanguage = (stack = '') =>
@@ -20,11 +23,18 @@ const guessLanguage = (stack = '') =>
             ? 'Go'
             : 'Java';
 
+/** Sessions created by earlier versions have no problem id, so they are matched by title. */
+const findProblem = (state, session) =>
+  state.dsa.find((p) => p.id === session?.problemId) ||
+  (session?.topic === 'DSA & coding'
+    ? state.dsa.find((p) => p.problem.toLowerCase() === session.exercise.toLowerCase())
+    : undefined);
+
 /** Saves the score and, for a DSA problem, records the progress. */
 function complete(state, id, result) {
   const next = scoreSession(state, id, result);
   const session = next.sessions.find((s) => s.id === id);
-  const item = next.dsa.find((p) => p.id === session?.problemId);
+  const item = findProblem(next, session);
   if (!item || result.verdict === 'needs_work') return next;
   const status = result.independent ? 'Solved independently' : 'Solved with help';
   return {
@@ -47,7 +57,10 @@ export default function SessionDetail({ data, update, config, id, back }) {
     [draft, setDraft] = useState(''),
     [pending, setPending] = useState(''),
     [busy, setBusy] = useState(''),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(false),
+    [statementError, setStatementError] = useState('');
+  const requested = useRef(false);
   const log = useRef(null);
   const timer = useRef(null);
   const unsaved = useRef(null);
@@ -71,10 +84,51 @@ export default function SessionDetail({ data, update, config, id, back }) {
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, 1500);
   };
-  useEffect(() => () => flush(), []);
+  useEffect(() => {
+    // Switching tabs or closing the page also saves what was typed.
+    const hidden = () => document.visibilityState === 'hidden' && flush();
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      document.removeEventListener('visibilitychange', hidden);
+      flush();
+    };
+  }, []);
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight;
   }, [session?.chat?.length, pending]);
+
+  // Spoken phrases are added to the message box, to be checked before sending.
+  const mic = useDictation((phrase) => setDraft((d) => (d ? `${d.trimEnd()} ${phrase}` : phrase)));
+  const problem = findProblem(data, session);
+  const statement = problem?.statement || session?.statement;
+  // Written once per problem, then kept with your data.
+  const loadStatement = async () => {
+    requested.current = true;
+    setLoading(true);
+    setStatementError('');
+    try {
+      const result = await api('/problem', {
+        method: 'POST',
+        body: {
+          title: problem.problem,
+          pattern: problem.pattern,
+          difficulty: problem.difficulty,
+          language: session.language || guessLanguage(data.profile.stack),
+        },
+      });
+      await update((s) => ({
+        ...s,
+        dsa: s.dsa.map((p) => (p.id === problem.id ? { ...p, statement: result } : p)),
+      }));
+    } catch (err) {
+      setStatementError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (config?.ai && problem && !statement && !requested.current) loadStatement();
+  }, [config?.ai, problem?.id, Boolean(statement)]);
 
   if (!session)
     return (
@@ -92,11 +146,13 @@ export default function SessionDetail({ data, update, config, id, back }) {
   const stage = session.stage || (session.answer || isScored(session) ? 'code' : 'approach');
   const hintsUsed = session.hintsUsed || 0;
   const language = session.language || guessLanguage(data.profile.stack);
-  const question = session.summary || session.exercise;
+  const question = statement
+    ? statementText(session.exercise, statement)
+    : session.summary || session.exercise;
   const lessonStep = session.lessonStep || 0;
   // Being taught or hinted means the problem was not solved independently.
   const unaided = hintsUsed === 0 && lessonStep === 0;
-  const item = data.dsa.find((p) => p.id === session.problemId);
+  const item = problem;
 
   const request = (action, messages) =>
     api('/coach/session', {
@@ -131,7 +187,7 @@ export default function SessionDetail({ data, update, config, id, back }) {
   const send = (e) => {
     e?.preventDefault();
     const content = draft.trim();
-    if (!content || busy) return;
+    if (!content || busy || mic.listening) return;
     const message = { role: 'user', content };
     if (!ai) {
       setDraft('');
@@ -242,7 +298,33 @@ export default function SessionDetail({ data, update, config, id, back }) {
 
       <div className={`workspace ${stage}`}>
         <section className="card chat">
-          <div className="question">{question}</div>
+          {item ? (
+            <>
+              <p className="eyebrow">
+                {item.pattern.toUpperCase()} · {item.difficulty.toUpperCase()}
+              </p>
+              {statement && <Statement statement={statement} />}
+              {loading && <p className="interview-hint">Writing the question and test cases…</p>}
+              {statementError && <p className="coach-error">{statementError}</p>}
+              {!statement && !ai && (
+                <p className="interview-hint">
+                  Turn on AI to show the question here, or open it using the link below.
+                </p>
+              )}
+              {statement && (
+                <p className="interview-hint">
+                  AI-written. Check doubtful test cases against the original.
+                </p>
+              )}
+              {ai && !loading && (
+                <button type="button" className="link" onClick={loadStatement}>
+                  {statement ? 'Rewrite question' : 'Load question'}
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="question">{question}</div>
+          )}
           {item && (
             <div className="resources">
               <a href={problemUrl(item.problem)} target="_blank" rel="noreferrer">
@@ -300,8 +382,45 @@ export default function SessionDetail({ data, update, config, id, back }) {
               onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && send(e)}
               placeholder={stage === 'approach' ? 'I would start by…' : 'Ask about your solution…'}
             />
+            {mic.listening && (
+              <p className="interview-hint" aria-live="polite">
+                Listening… {mic.interim}
+              </p>
+            )}
+            {mic.problem && <p className="coach-error">{mic.problem}</p>}
+            {mic.supported ? (
+              <div className="row-actions">
+                <button
+                  type="button"
+                  className={mic.listening ? 'primary mini' : 'small-btn'}
+                  aria-pressed={mic.listening}
+                  onClick={() =>
+                    mic.listening ? mic.stop() : mic.start(data.profile.micLang || 'en-IN')
+                  }
+                >
+                  {mic.listening ? '■ Stop mic' : '🎤 Speak'}
+                </button>
+                <select
+                  aria-label="Speech language"
+                  value={data.profile.micLang || 'en-IN'}
+                  disabled={mic.listening}
+                  onChange={(e) => {
+                    const micLang = e.target.value;
+                    update((s) => ({ ...s, profile: { ...s.profile, micLang } }));
+                  }}
+                >
+                  <option value="en-IN">English / Hinglish</option>
+                  <option value="hi-IN">Hindi + English</option>
+                </select>
+              </div>
+            ) : (
+              <p className="interview-hint">Voice input needs Chrome, Edge or Safari.</p>
+            )}
             <div className="row-actions">
-              <button className="primary mini" disabled={Boolean(busy) || !draft.trim()}>
+              <button
+                className="primary mini"
+                disabled={Boolean(busy) || loading || mic.listening || !draft.trim()}
+              >
                 {ai ? 'Send' : 'Add note'}
               </button>
               {ai && stage === 'approach' && lessonStep < 5 && (
@@ -309,13 +428,18 @@ export default function SessionDetail({ data, update, config, id, back }) {
                   type="button"
                   className="small-btn"
                   onClick={teach}
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || loading}
                 >
                   {lessonStep ? `Next lesson step (${lessonStep + 1}/5)` : 'Teach me story-first'}
                 </button>
               )}
               {ai && (
-                <button type="button" className="small-btn" onClick={hint} disabled={Boolean(busy)}>
+                <button
+                  type="button"
+                  className="small-btn"
+                  onClick={hint}
+                  disabled={Boolean(busy) || loading}
+                >
                   Give me a hint
                 </button>
               )}
@@ -364,7 +488,7 @@ export default function SessionDetail({ data, update, config, id, back }) {
               <button
                 className="primary mini"
                 onClick={review}
-                disabled={!ai || Boolean(busy) || code.trim().length < 20}
+                disabled={!ai || Boolean(busy) || loading || code.trim().length < 20}
               >
                 Submit for review
               </button>

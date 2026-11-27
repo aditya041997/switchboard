@@ -19,6 +19,10 @@ For a single-process production build on your own computer: `npm run build && np
 
 The DSA lab has 155 well-known problems grouped by pattern, each linked to LeetCode and to a search of the codestorywithMIK channel. You can add problems from another sheet and save a playlist per pattern.
 
+The **Speak** button turns English, Hinglish or Hindi-mixed speech into text in the message box using the browser’s speech recognition (Chrome, Edge or Safari). The browser may send the audio to its vendor’s servers.
+
+With AI on, opening a problem shows a statement, examples, constraints and test cases written by the AI in its own words. It is created once per problem and saved; verify doubtful cases on LeetCode.
+
 On a session: discuss your approach with the coach (or choose **Teach me story-first** for a five-step lesson), write code in the built-in editor, then submit it for review and ask for hints as needed. The AI reads your code but does not run it; confirm on LeetCode. This project is not affiliated with LeetCode or codestorywithMIK.
 
 ## The practice loop
@@ -43,7 +47,7 @@ Without an API key you get a built-in question bank, self-scoring and a rule-bas
 
 ## What leaves your computer
 
-With AI enabled, your role, level, experience, stack, the exercise and your answer are sent to OpenAI. A resume review or LaTeX rewrite also sends that document and the job description. With MongoDB enabled, all saved data is copied there.
+With AI enabled, your role, level, experience, stack, the exercise and your answer are sent to OpenAI. A resume review or LaTeX rewrite also sends that document and the job description. With MongoDB enabled, all saved data, including session chats, code, scores and questions, is copied there. A failed copy is retried automatically, and the app shows a warning until it succeeds.
 
 ## Hosting
 

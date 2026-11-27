@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../server/app.js';
 import { createStore } from '../server/store.js';
-import { sessionTurn } from '../server/coach.js';
+import { parseStatement, sessionTurn } from '../server/coach.js';
+import { statementText } from '../shared/statement.js';
 import { CATALOG, parseImport, slug } from '../shared/catalog.js';
 import { patternVideosUrl, youtubeUrl } from '../shared/videos.js';
 import { migrateState, starterState, validateState } from '../shared/model.js';
@@ -107,4 +108,21 @@ test('only https YouTube links are accepted, and every pattern has videos', () =
   assert.equal(youtubeUrl('https://youtube.com.evil.example/x'), '');
   assert.ok(youtubeUrl('https://www.youtube.com/playlist?list=abc'));
   for (const p of CATALOG) assert.match(patternVideosUrl(p.pattern), /codestorywithMIK\/search/);
+});
+
+test('a statement is validated and passed to the coach as text', () => {
+  const c = { name: 'n', input: '[2,7], 9', output: '[0,1]' };
+  const parsed = parseStatement(
+    JSON.stringify({
+      known: true,
+      description: 'Find two numbers.',
+      signature: 'int[] f()',
+      examples: [{ ...c, explanation: 'e' }],
+      constraints: ['n >= 2'],
+      testCases: [c],
+    }),
+  );
+  assert.match(statementText('Two Sum', parsed), /Test 1\nInput: \[2,7\], 9\nExpected: \[0,1\]/);
+  assert.throws(() => parseStatement('{"known":false}'), /does not recognise/);
+  assert.throws(() => parseStatement('{"known":true,"description":"x"}'), /missing parts/);
 });

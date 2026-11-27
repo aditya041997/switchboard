@@ -54,7 +54,7 @@ function Login({ error, reload }) {
 }
 
 function Workspace() {
-  const { data, error, saving, toast, update, reload } = useStore();
+  const { data, error, saving, toast, storage, update, reload } = useStore();
   const [sessionId, setSessionId] = useState(sessionFromPath),
     [view, setView] = useState(sessionFromPath() ? 'Session detail' : 'Overview'),
     [modal, setModal] = useState(null),
@@ -131,6 +131,19 @@ function Workspace() {
     });
     go('Overview');
   };
+  const storageLabel = !storage
+    ? 'Checking storage…'
+    : !storage.configured
+      ? 'Not using MongoDB'
+      : storage.synced
+        ? 'Stored in MongoDB'
+        : 'Not yet in MongoDB';
+  const storageWarning =
+    storage?.configured && !storage.synced
+      ? 'Your latest changes are not in MongoDB yet. Retrying automatically. Until this clears, a server restart can lose them.'
+      : storage && !storage.configured && storage.temporaryDisk
+        ? 'MongoDB is not set up, so a server restart will erase your sessions. Add MONGODB_URI in Render.'
+        : '';
   const props = { data, update, config, go, open: setModal, openSession, startSession };
 
   return (
@@ -158,7 +171,7 @@ function Workspace() {
         </nav>
         <div className="sidebar-foot">
           <div className="pulse"></div>
-          <span>{saving ? 'Saving…' : 'Local-first storage'}</span>
+          <span>{saving ? 'Saving…' : storageLabel}</span>
           <small>{config?.ai ? 'AI coach on' : 'AI off · built-in mode'}</small>
         </div>
       </aside>
@@ -193,6 +206,11 @@ function Workspace() {
             </button>
           </div>
         </header>
+        {storageWarning && (
+          <p className="coach-error storage-warning" role="alert">
+            {storageWarning}
+          </p>
+        )}
         {view === 'Overview' && <Overview {...props} />}
         {view === 'Sessions' && <Sessions {...props} />}
         {view === 'Session detail' && (

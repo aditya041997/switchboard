@@ -26,6 +26,7 @@ const app = createApp({
   ai: createAi({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL || undefined }),
   password: config.password,
   jitsiDomain: JITSI_DOMAIN,
+  temporaryDisk: Boolean(process.env.RENDER),
   dist: join(root, 'dist'),
 });
 app.listen(config.port, config.host, () =>

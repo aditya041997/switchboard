@@ -13,7 +13,14 @@ const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const route = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
-export function createApp({ store, ai, password = '', jitsiDomain = '', dist }) {
+export function createApp({
+  store,
+  ai,
+  password = '',
+  jitsiDomain = '',
+  dist,
+  temporaryDisk = false,
+}) {
   const app = express();
   app.disable('x-powered-by');
   app.use((_, res, next) => {
@@ -57,6 +64,14 @@ export function createApp({ store, ai, password = '', jitsiDomain = '', dist }) 
   app.get(
     '/api/state',
     route(async (_, res) => res.json(await store.load())),
+  );
+  app.get(
+    '/api/storage',
+    route(async (_, res) => {
+      // Loading compares the two copies and sends any pending changes to MongoDB.
+      await store.load().catch(() => {});
+      res.json({ ...store.status(), temporaryDisk });
+    }),
   );
   app.put(
     '/api/state',
@@ -115,6 +130,22 @@ export function createApp({ store, ai, password = '', jitsiDomain = '', dist }) 
       const prompt = coach.evaluationPrompt({ ...coachRequest(req.body), exercise, answer });
       const reply = await ai.ask(coach.COACH_RULES, prompt, coach.EVALUATION_FORMAT);
       res.json(coach.parseEvaluation(reply));
+    }),
+  );
+
+  app.post(
+    '/api/problem',
+    route(async (req, res) => {
+      const title = text(req.body?.title, 200);
+      if (!title) throw fail('The problem needs a title.');
+      const prompt = coach.statementPrompt({
+        title,
+        pattern: text(req.body?.pattern, 80),
+        difficulty: text(req.body?.difficulty, 20),
+        language: text(req.body?.language, 30),
+      });
+      const reply = await ai.ask(coach.COACH_RULES, prompt, coach.STATEMENT_FORMAT);
+      res.json(coach.parseStatement(reply));
     }),
   );
 

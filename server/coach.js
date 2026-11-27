@@ -131,3 +131,159 @@ export function parseEvaluation(text) {
     followUp: String(data.followUp || ''),
   };
 }
+
+const APPROACH_FORMAT = {
+  type: 'json_schema',
+  name: 'approach_turn',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['reply', 'ready'],
+    properties: { reply: { type: 'string' }, ready: { type: 'boolean' } },
+  },
+};
+const REVIEW_FORMAT = {
+  ...EVALUATION_FORMAT,
+  name: 'code_review',
+  schema: {
+    ...EVALUATION_FORMAT.schema,
+    required: [...EVALUATION_FORMAT.schema.required, 'verdict'],
+    properties: {
+      ...EVALUATION_FORMAT.schema.properties,
+      verdict: { type: 'string', enum: ['correct', 'needs_work'] },
+    },
+  },
+};
+
+const HINTS = [
+  'Give a small nudge: one question or observation that points at what to notice. Do not name the technique.',
+  'Name the technique or data structure that helps and why, without giving the steps.',
+  'Outline the next one or two steps in words. No code.',
+];
+
+function readJson(value) {
+  try {
+    return JSON.parse(value.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+  } catch {
+    throw new AiError('The AI reply was not readable. Please try again.');
+  }
+}
+
+function parseApproach(reply) {
+  const data = readJson(reply);
+  if (typeof data.reply !== 'string' || !data.reply.trim())
+    throw new AiError('The AI reply was empty. Please try again.');
+  return { reply: data.reply, ready: data.ready === true };
+}
+
+export const LESSON_STEPS = [
+  'Tell the problem as a short everyday story or analogy, with one tiny example. Do not discuss solutions yet.',
+  'Build the most obvious brute-force idea from that story and let me work out its cost.',
+  'Show on the example what work the brute force repeats, and lead me to the key observation with a question.',
+  'Introduce the better technique and why it follows from that observation, then dry-run it on a small example with a table of the changing values.',
+  'Summarise the idea, complexity and edge cases, name the reusable pattern, and ask me to write the code myself.',
+];
+
+/** Builds one turn of the guided session: discuss the approach, then write, hint and review. */
+export function sessionTurn(turn) {
+  const { stage, action, problem, code, language, hintsUsed, messages, level, focus, profile } =
+    turn;
+  const lessonStep = Math.min(turn.lessonStep || 0, LESSON_STEPS.length - 1);
+  const tongue =
+    turn.explainIn === 'Hinglish'
+      ? ' Explain in Hinglish (Hindi in Latin script mixed with English technical terms).'
+      : '';
+  const coding = focus === 'DSA & coding';
+  const work = coding ? `${language || 'unspecified language'} code` : 'written solution';
+  const context = {
+    role: 'user',
+    content: `You are running a ${level} interview on ${focus}. Candidate context: ${candidateContext(profile)}
+The question is below. If you only recognise it by its title, restate it briefly in your own words when that helps, and say if you are unsure of a constraint.
+
+<question>
+${problem}
+</question>`,
+  };
+  const attempt = code.trim() ? `\n\nMy current ${work}:\n<attempt>\n${code}\n</attempt>` : '';
+  const ask = (instruction) => ({ role: 'user', content: `[Session instruction] ${instruction}` });
+
+  if (action === 'review') {
+    return {
+      input: [
+        context,
+        ...messages,
+        ask(
+          `Review my ${work}. You cannot run it, so trace it by hand on a normal case and edge cases. Set verdict to "correct" only if it solves the question${coding ? ' with acceptable complexity' : ''}. In feedback, state complexity, concrete failing inputs or missing points, and what to fix, without writing the corrected solution. Score each dimension 0-5 on what is demonstrated, list at most 4 short gaps, strengths as mastered, and one follow-up question.${attempt}`,
+        ),
+      ],
+      format: REVIEW_FORMAT,
+      parse: (reply) => {
+        const result = parseEvaluation(reply);
+        return {
+          ...result,
+          verdict: readJson(reply).verdict === 'correct' ? 'correct' : 'needs_work',
+        };
+      },
+    };
+  }
+  if (action === 'teach') {
+    return {
+      input: [
+        context,
+        ...messages,
+        ask(
+          `I asked to be taught, building intuition story-first. This is lesson step ${lessonStep + 1} of ${LESSON_STEPS.length}: ${LESSON_STEPS[lessonStep]} Cover only this step, in simple words, explaining why for each move. No code. End with one question that checks my understanding. Under 220 words.${tongue}`,
+        ),
+      ],
+      parse: (reply) => ({ reply }),
+    };
+  }
+  if (action === 'hint') {
+    const strength = HINTS[Math.min(hintsUsed, HINTS.length - 1)];
+    return {
+      input: [
+        context,
+        ...messages,
+        ask(`I am stuck at the ${stage} stage. ${strength} Keep it under 80 words.${attempt}`),
+      ],
+      parse: (reply) => ({ reply }),
+    };
+  }
+  if (stage === 'approach' && turn.lessonStep > 0) {
+    return {
+      input: [
+        context,
+        ...messages,
+        ask(
+          `You are teaching me story-first and have covered ${turn.lessonStep} of ${LESSON_STEPS.length} steps. Respond to my last message as a patient tutor: correct misunderstandings with a small example, explain why, and ask one question. Do not jump ahead and do not write code. Set ready to true only when my own messages describe a workable approach with its complexity. Under 150 words.${tongue}`,
+        ),
+      ],
+      format: APPROACH_FORMAT,
+      parse: parseApproach,
+    };
+  }
+  if (stage === 'approach') {
+    return {
+      input: [
+        context,
+        ...messages,
+        ask(
+          'We are only discussing the approach. Respond to my last message like an interviewer: confirm what is right, challenge one weak point (correctness, edge case, complexity or trade-off) and ask one question. Do not give the solution, the optimal technique or code. Set ready to true only when my own messages describe a workable approach with its time and space complexity (or, for design topics, the main components and trade-offs). Then tell me to move on to writing it. Keep the reply under 120 words.',
+        ),
+      ],
+      format: APPROACH_FORMAT,
+      parse: parseApproach,
+    };
+  }
+  return {
+    input: [
+      context,
+      ...messages,
+      ask(
+        `I am writing the ${work}. Answer my last message briefly. Point out problems with questions or failing inputs. Do not write the solution or replacement code.${attempt}`,
+      ),
+    ],
+    parse: (reply) => ({ reply }),
+  };
+}

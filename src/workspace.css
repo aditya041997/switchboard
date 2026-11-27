@@ -1,0 +1,207 @@
+.detail-hero.compact {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 17px 0 10px;
+}
+.steps button {
+  border: 1px solid #dfe2e8;
+  background: #fff;
+  border-radius: 20px;
+  padding: 8px 15px;
+  font: inherit;
+  font-size: 13px;
+  color: #55617a;
+  cursor: pointer;
+}
+.steps button.active {
+  background: #1c2541;
+  border-color: #1c2541;
+  color: #fff;
+}
+.steps span {
+  margin-left: auto;
+  font-size: 12px;
+  color: #7b8498;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 17px;
+}
+.workspace.code {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+.workspace .card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.chat .messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 160px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.bubble {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: #f1f3f8;
+  color: #28324a;
+  max-width: 88%;
+  flex-shrink: 0;
+}
+.bubble b {
+  display: block;
+  font-size: 11px;
+  color: #7b8498;
+  margin-bottom: 3px;
+}
+.bubble.user {
+  align-self: flex-end;
+  background: #e8edff;
+}
+.bubble.hint {
+  background: #fff6eb;
+  border: 1px solid #f1dcc0;
+}
+.bubble.review {
+  background: #e8f4ec;
+}
+.chat form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.spread {
+  justify-content: space-between;
+}
+.solution select {
+  width: auto;
+}
+.editor {
+  display: flex;
+  height: 460px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #161d33;
+}
+.editor pre {
+  margin: 0;
+  padding: 12px 8px;
+  min-width: 42px;
+  overflow: hidden;
+  text-align: right;
+  color: #6c779b;
+  user-select: none;
+}
+.editor pre,
+.editor textarea {
+  font:
+    13px/20px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+}
+.editor textarea {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  padding: 12px;
+  background: transparent;
+  color: #e6eaf7;
+  white-space: pre;
+  tab-size: 4;
+}
+.editor.prose textarea {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+.manual {
+  margin-top: 17px;
+}
+.manual summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pattern {
+  border-bottom: 1px solid #eceef2;
+}
+.pattern summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 2px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.pattern summary span {
+  margin-left: auto;
+  color: #7b8498;
+  font-size: 12px;
+}
+.problem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 170px auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0 8px 16px;
+  font-size: 13px;
+}
+.problem a {
+  color: #28324a;
+  text-decoration: none;
+}
+.problem select {
+  font-size: 12px;
+  padding: 6px;
+}
+.add-problems {
+  margin-top: 17px;
+}
+@media (max-width: 1100px) {
+  .workspace.code {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .problem {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-left: 0;
+  }
+}
+
+.resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+}
+.resources a {
+  color: #5265d6;
+  font-weight: 700;
+  text-decoration: none;
+}
+.resources.playlist {
+  padding: 0 0 8px 16px;
+}
+.bubble.lesson {
+  background: #f3edff;
+}

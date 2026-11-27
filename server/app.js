@@ -119,6 +119,37 @@ export function createApp({ store, ai, password = '', jitsiDomain = '', dist }) 
   );
 
   app.post(
+    '/api/coach/session',
+    route(async (req, res) => {
+      const body = req.body || {};
+      const turn = {
+        ...coachRequest(body),
+        stage: body.stage === 'code' ? 'code' : 'approach',
+        action: ['message', 'hint', 'review', 'teach'].includes(body.action)
+          ? body.action
+          : 'message',
+        lessonStep: Math.max(0, Math.min(5, Math.trunc(Number(body.lessonStep)) || 0)),
+        explainIn: body.explainIn === 'Hinglish' ? 'Hinglish' : 'English',
+        problem: text(body.problem, 8000),
+        code: typeof body.code === 'string' ? body.code.slice(0, 20000) : '',
+        language: text(body.language, 30),
+        hintsUsed: Math.max(0, Math.min(20, Number(body.hintsUsed) || 0)),
+        messages: (Array.isArray(body.messages) ? body.messages : [])
+          .filter((m) => ['user', 'assistant'].includes(m?.role) && text(m.content, 6000))
+          .slice(-30)
+          .map((m) => ({ role: m.role, content: text(m.content, 6000) })),
+      };
+      if (!turn.problem) throw fail('This session has no question.');
+      if (turn.action === 'message' && turn.messages.at(-1)?.role !== 'user')
+        throw fail('Write a message first.');
+      if (turn.action === 'review' && turn.code.trim().length < 20)
+        throw fail('Write your solution first.');
+      const { input, format, parse } = coach.sessionTurn(turn);
+      res.json(parse(await ai.ask(coach.COACH_RULES, input, format)));
+    }),
+  );
+
+  app.post(
     '/api/resume/extract',
     route(async (req, res) => {
       const { fileName = '', dataUrl = '' } = req.body || {};

@@ -121,13 +121,18 @@ function Workspace() {
   const reset = () => {
     if (
       !confirm(
-        'Delete all sessions, revisions, applications, career drafts, interview rooms and sharing links? Your profile name is kept. This cannot be undone.',
+        'Delete all sessions, revisions, applications, career drafts, interview rooms and sharing links? Your profile name and generated questions are kept. This cannot be undone.',
       )
     )
       return;
     update((s) => {
       const fresh = starterState();
-      return { ...fresh, meta: s.meta, profile: { ...fresh.profile, name: s.profile.name } };
+      // Generated questions are kept, so they are not paid for twice.
+      const dsa = fresh.dsa.map((p) => {
+        const statement = s.dsa.find((old) => old.problem === p.problem)?.statement;
+        return statement ? { ...p, statement } : p;
+      });
+      return { ...fresh, dsa, meta: s.meta, profile: { ...fresh.profile, name: s.profile.name } };
     });
     go('Overview');
   };

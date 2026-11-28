@@ -30,6 +30,9 @@ const findProblem = (state, session) =>
     ? state.dsa.find((p) => p.problem.toLowerCase() === session.exercise.toLowerCase())
     : undefined);
 
+/** Questions being written now, so reopening a problem does not request a second one. */
+const writing = new Map();
+
 /** Saves the score and, for a DSA problem, records the progress. */
 function complete(state, id, result) {
   const next = scoreSession(state, id, result);
@@ -107,19 +110,27 @@ export default function SessionDetail({ data, update, config, id, back }) {
     setLoading(true);
     setStatementError('');
     try {
-      const result = await api('/problem', {
-        method: 'POST',
-        body: {
-          title: problem.problem,
-          pattern: problem.pattern,
-          difficulty: problem.difficulty,
-          language: session.language || guessLanguage(data.profile.stack),
-        },
-      });
-      await update((s) => ({
-        ...s,
-        dsa: s.dsa.map((p) => (p.id === problem.id ? { ...p, statement: result } : p)),
-      }));
+      let job = writing.get(problem.id);
+      if (!job) {
+        job = api('/problem', {
+          method: 'POST',
+          body: {
+            title: problem.problem,
+            pattern: problem.pattern,
+            difficulty: problem.difficulty,
+            language: session.language || guessLanguage(data.profile.stack),
+          },
+        })
+          .then((result) =>
+            update((s) => ({
+              ...s,
+              dsa: s.dsa.map((p) => (p.id === problem.id ? { ...p, statement: result } : p)),
+            })),
+          )
+          .finally(() => writing.delete(problem.id));
+        writing.set(problem.id, job);
+      }
+      await job;
     } catch (err) {
       setStatementError(err.message);
     } finally {

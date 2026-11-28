@@ -21,6 +21,8 @@ The DSA lab has 155 well-known problems grouped by pattern, each linked to LeetC
 
 The **Speak** button turns English, Hinglish or Hindi-mixed speech into text in the message box using the browser’s speech recognition (Chrome, Edge or Safari). The browser may send the audio to its vendor’s servers.
 
+**Career lab** reviews your resume or LinkedIn text line by line. For each point you can accept, edit or skip the suggestion, or answer a question so the AI rewrites the line. A resume has a live PDF preview with numbered marks (plain one-column layout); LinkedIn shows sections ready to copy. Check every claim before using it.
+
 With AI on, opening a problem shows a statement, examples, constraints and test cases written by the AI in its own words. It is created once per problem and saved; verify doubtful cases on LeetCode.
 
 On a session: discuss your approach with the coach (or choose **Teach me story-first** for a five-step lesson), write code in the built-in editor, then submit it for review and ask for hints as needed. The AI reads your code but does not run it; confirm on LeetCode. This project is not affiliated with LeetCode or codestorywithMIK.

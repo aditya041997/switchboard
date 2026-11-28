@@ -133,3 +133,68 @@ export function resumePdf(text) {
     doc.end();
   });
 }
+
+// The built-in PDF fonts only cover Western characters.
+const winAnsi = (text) =>
+  String(text)
+    .normalize('NFKC')
+    .replace(/₹/g, 'INR ')
+    .replace(/→/g, '->')
+    .replace(/[^\n\x20-\x7e\xa0-\xff‘’“”–—•…€]/g, '');
+
+/**
+ * Lays the lines out as a clean one-column resume. A line with `mark` is highlighted and
+ * numbered: "open" still needs a decision, "changed" has been updated.
+ */
+export function studioPdf(lines) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 46, size: 'A4' });
+    const chunks = [];
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+    doc.on('error', reject);
+    const left = doc.page.margins.left;
+    const width = doc.page.width - left - doc.page.margins.right;
+    for (const line of lines) {
+      const text = winAnsi(line.text);
+      const bullet = line.kind === 'bullet';
+      const heading = line.kind === 'heading';
+      const size = line.kind === 'name' ? 19 : heading ? 11 : 9.8;
+      doc.font(heading || line.kind === 'name' ? 'Helvetica-Bold' : 'Helvetica').fontSize(size);
+      if (heading) doc.moveDown(0.7);
+      const x = left + (bullet ? 12 : 0);
+      const options = { width: width - (x - left), lineGap: 2 };
+      const height = doc.heightOfString(text, options);
+      if (doc.y + height > doc.page.height - doc.page.margins.bottom) doc.addPage();
+      const y = doc.y;
+      if (line.mark) {
+        const open = line.mark === 'open';
+        doc
+          .save()
+          .rect(x - 3, y - 2, options.width + 6, height + 2)
+          .fill(open ? '#ffe3c2' : '#d7f3df');
+        if (line.number)
+          doc
+            .fillColor(open ? '#a2540a' : '#18703a')
+            .font('Helvetica-Bold')
+            .fontSize(8)
+            .text(String(line.number), left - 26, y + 1, { width: 18, align: 'right' });
+        doc.restore();
+        doc.font('Helvetica').fontSize(size);
+      }
+      doc.fillColor('#172036');
+      if (bullet) doc.text('•', left + 2, y, { lineBreak: false });
+      doc.text(text, x, y, options);
+      if (heading) {
+        doc
+          .moveTo(left, doc.y)
+          .lineTo(left + width, doc.y)
+          .lineWidth(0.6)
+          .stroke('#9aa3b8');
+        doc.moveDown(0.35);
+      }
+      doc.x = left;
+    }
+    doc.end();
+  });
+}

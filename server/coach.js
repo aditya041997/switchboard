@@ -162,7 +162,7 @@ const HINTS = [
   'Outline the next one or two steps in words. No code.',
 ];
 
-function readJson(value) {
+export function readJson(value) {
   try {
     return JSON.parse(value.replace(/^```(?:json)?\s*|\s*```$/g, ''));
   } catch {
@@ -177,7 +177,7 @@ function parseApproach(reply) {
   return { reply: data.reply, ready: data.ready === true };
 }
 
-const record = (properties) => ({
+export const record = (properties) => ({
   type: 'object',
   additionalProperties: false,
   required: Object.keys(properties),

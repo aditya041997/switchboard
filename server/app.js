@@ -5,7 +5,8 @@ import express from 'express';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { FOCUSES, LEVELS, readiness, validateState } from '../shared/model.js';
 import * as coach from './coach.js';
-import { analyseMaterial, draftSection, resumePdf } from './resume.js';
+import { analyseMaterial, draftSection, resumePdf, studioPdf } from './resume.js';
+import * as studio from './studio.js';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const digest = (v) => createHash('sha256').update(v).digest();
@@ -233,6 +234,73 @@ ${material}
       });
     }),
   );
+
+  const kind = (v) => (v === 'linkedin' ? 'linkedin' : 'resume');
+  const documentLines = (value) =>
+    (Array.isArray(value) ? value : [])
+      .slice(0, 300)
+      .map((l) => ({
+        id: text(l?.id, 20),
+        kind: ['name', 'heading', 'bullet'].includes(l?.kind) ? l.kind : 'text',
+        text: text(l?.text, 2600),
+        mark: ['open', 'changed'].includes(l?.mark) ? l.mark : undefined,
+        number: Number.isInteger(l?.number) ? l.number : undefined,
+      }))
+      .filter((l) => l.id && l.text);
+
+  app.post(
+    '/api/studio/review',
+    route(async (req, res) => {
+      const lines = documentLines(req.body?.lines);
+      if (lines.map((l) => l.text).join(' ').length < 40) throw fail('Add more text first.');
+      if (JSON.stringify(lines).length > 40000) throw fail('That is too long to review at once.');
+      const prompt = studio.reviewPrompt({
+        type: kind(req.body?.type),
+        lines,
+        jobDescription: text(req.body?.jobDescription, 16000),
+        profile: req.body?.profile,
+      });
+      const reply = await ai.ask(coach.COACH_RULES, prompt, studio.REVIEW_FORMAT);
+      res.json(studio.parseReview(reply, lines));
+    }),
+  );
+  app.post(
+    '/api/studio/rewrite',
+    route(async (req, res) => {
+      const request = {
+        type: kind(req.body?.type),
+        line: text(req.body?.line, 2600),
+        section: text(req.body?.section, 80),
+        answer: text(req.body?.answer, 2000),
+        instruction: text(req.body?.instruction, 300),
+        jobDescription: text(req.body?.jobDescription, 16000),
+        profile: req.body?.profile,
+      };
+      if (!request.line) throw fail('There is no line to rewrite.');
+      const reply = await ai.ask(
+        coach.COACH_RULES,
+        studio.rewritePrompt(request),
+        studio.REWRITE_FORMAT,
+      );
+      res.json(studio.parseRewrite(reply, request));
+    }),
+  );
+  app.post(
+    '/api/studio/pdf',
+    route(async (req, res) => {
+      const lines = documentLines(req.body?.lines);
+      if (!lines.length) throw fail('There is nothing to preview.');
+      res.json({ pdfBase64: await studioPdf(lines) });
+    }),
+  );
+
+  app.post('/api/resume/review-checks', (req, res) => {
+    const { score, checks } = analyseMaterial(
+      text(req.body?.text, 40000),
+      text(req.body?.jobDescription, 16000),
+    );
+    res.json({ score, checks });
+  });
 
   app.post(
     '/api/resume/overleaf',

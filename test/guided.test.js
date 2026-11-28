@@ -7,6 +7,9 @@ import { createApp } from '../server/app.js';
 import { createStore } from '../server/store.js';
 import { parseStatement, sessionTurn } from '../server/coach.js';
 import { statementText } from '../shared/statement.js';
+import { newNumbers, parseLines } from '../shared/studio.js';
+import { studioPdf } from '../server/resume.js';
+import { mask, parseReview } from '../server/studio.js';
 import { CATALOG, parseImport, slug } from '../shared/catalog.js';
 import { patternVideosUrl, youtubeUrl } from '../shared/videos.js';
 import { migrateState, starterState, validateState } from '../shared/model.js';
@@ -125,4 +128,46 @@ test('a statement is validated and passed to the coach as text', () => {
   assert.match(statementText('Two Sum', parsed), /Test 1\nInput: \[2,7\], 9\nExpected: \[0,1\]/);
   assert.throws(() => parseStatement('{"known":false}'), /does not recognise/);
   assert.throws(() => parseStatement('{"known":true,"description":"x"}'), /missing parts/);
+});
+
+test('document lines are parsed and invented numbers are flagged', async () => {
+  const lines = parseLines(
+    'Asha Rao\nEXPERIENCE\n• Built an API that served\nmany users\n• Cut latency',
+  );
+  assert.deepEqual(
+    lines.map((l) => l.kind),
+    ['name', 'heading', 'bullet', 'bullet'],
+  );
+  assert.equal(lines[2].text, 'Built an API that served many users');
+  assert.deepEqual(newNumbers('Cut p99 latency 40% for 1,200 users', 'Cut p99 latency', '1200'), [
+    '40',
+  ]);
+  assert.deepEqual(newNumbers('Moved p99 reads to S3 on EC2, 3x faster', ''), ['3']);
+  assert.equal(mask('a@b.com +91 98765 43210').includes('98765'), false);
+  const reply = JSON.stringify({
+    score: 140,
+    summary: 's',
+    points: [
+      { line: 'l2', priority: 'high', issue: 'heading', suggestion: 'x', question: '' },
+      {
+        line: 'l4',
+        priority: 'high',
+        issue: 'vague',
+        suggestion: 'Cut latency by 30%',
+        question: 'q',
+      },
+      { line: 'zz', priority: 'high', issue: 'x', suggestion: 'x', question: '' },
+    ],
+  });
+  const review = parseReview(reply, lines);
+  assert.equal(review.score, 100);
+  assert.deepEqual(
+    review.points.map((p) => [p.lineId, p.options[0].check]),
+    [['l4', ['30']]],
+  );
+  const pdf = await studioPdf([
+    ...lines,
+    { kind: 'bullet', text: 'Saved ₹5 → done 🚀', mark: 'open', number: 1 },
+  ]);
+  assert.equal(Buffer.from(pdf, 'base64').subarray(0, 4).toString(), '%PDF');
 });
